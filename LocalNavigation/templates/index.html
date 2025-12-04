@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Motor Control</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f7fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 40px;
+    }
+
+    h1 {
+      font-size: 36px;
+      margin-bottom: 40px;
+      color: #333;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 100px 100px 100px;
+      gap: 20px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 15px 20px;
+      font-size: 22px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.1s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      background-color: #3498db;
+      color: white;
+    }
+
+    .btn:hover {
+      background-color: #2980b9;
+      transform: scale(1.05);
+    }
+
+    .stop {
+      background-color: #e74c3c;
+    }
+
+    .stop:hover {
+      background-color: #c0392b;
+    }
+
+    .empty {
+      width: 100px;
+      height: 60px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Motor Control Panel</h1>
+  <div class="grid">
+    <div class="empty"></div>
+    <button class="btn" onclick="sendCommand('forward')">⬆️</button>
+    <div class="empty"></div>
+
+    <button class="btn" onclick="sendCommand('left')">⬅️</button>
+    <button class="btn stop" onclick="sendCommand('stop')">⏹️</button>
+    <button class="btn" onclick="sendCommand('right')">➡️</button>
+
+    <div class="empty"></div>
+    <button class="btn" onclick="sendCommand('backward')">⬇️</button>
+    <div class="empty"></div>
+  </div>
+
+  <script>
+    function sendCommand(direction) {
+      fetch('/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction })
+      }).then(res => res.text())
+        .then(msg => console.log(msg))
+        .catch(err => console.error(err));
+    }
+  </script>
+</body>
+</html>
