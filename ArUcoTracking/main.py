@@ -101,7 +101,7 @@ def main():
     
     frame_count = 0
     last_nav_update = 0
-    nav_update_interval = 0.1  # Обновлять навигацию 10 раз в секунду
+    nav_update_interval = 0.2  # Обновлять навигацию 5 раз в секунду (уменьшено для производительности)
     
     try:
         while True:

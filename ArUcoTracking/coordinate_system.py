@@ -103,9 +103,12 @@ class CoordinateSystem:
     def calculate_rotation_from_marker(self, marker_corners, marker_center_pixel):
         """Вычисляет поворот машинки на основе одной ArUco метки.
         
-        Определяет "низ" метки (угол с минимальной Y координатой в системе камеры),
-        который соответствует "заду" машинки. Вычисляет направление от центра метки
-        к "низу" и преобразует его в угол поворота в системе координат полигона.
+        Использует фиксированный порядок углов ArUco:
+        - Угол 0 (первый) = ВЕРХ (FRONT) - перед машинки
+        - Угол 2 (третий) = НИЗ (REAR) - зад машинки
+        
+        Вычисляет направление от центра метки к "верху" (перед машинки)
+        и преобразует его в угол поворота в системе координат полигона.
         
         Args:
             marker_corners: Углы ArUco метки (формат OpenCV)
@@ -126,13 +129,13 @@ class CoordinateSystem:
         # Преобразуем углы метки в массив точек
         corners_2d = marker_corners[0].reshape(-1, 2)
         
-        # Находим угол с минимальной Y координатой (в системе камеры) = "низ" метки
-        bottom_corner_idx = np.argmax(corners_2d[:, 1])  # Максимальная Y = нижний угол
-        bottom_corner = corners_2d[bottom_corner_idx]
+        # Используем фиксированный порядок углов:
+        # Угол 0 = ВЕРХ (FRONT) - перед машинки
+        top_corner = corners_2d[0]
         
-        # Вычисляем направление от центра метки к "низу" (в пикселях камеры)
-        dx_pixel = bottom_corner[0] - marker_center_pixel[0]
-        dy_pixel = bottom_corner[1] - marker_center_pixel[1]
+        # Вычисляем направление от центра метки к "верху" (перед машинки) в пикселях камеры
+        dx_pixel = top_corner[0] - marker_center_pixel[0]
+        dy_pixel = top_corner[1] - marker_center_pixel[1]
         
         # Преобразуем это направление в систему координат полигона
         # Для этого преобразуем две точки: центр и центр + направление
@@ -153,10 +156,8 @@ class CoordinateSystem:
         dx = direction_transformed[0] - center_transformed[0]
         dy = direction_transformed[1] - center_transformed[1]
         
-        # Вычисляем угол поворота (направление "зада" машинки)
-        # Но нам нужен угол "носа" машинки, который противоположен "заду"
-        # Поэтому добавляем π
-        rotation = math.atan2(dy, dx) + math.pi
+        # Вычисляем угол поворота (направление "перед" машинки = направление к "верху" метки)
+        rotation = math.atan2(dy, dx)
         
         # Нормализуем угол в диапазон [-π, π]
         rotation = math.atan2(math.sin(rotation), math.cos(rotation))

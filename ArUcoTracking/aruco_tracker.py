@@ -148,6 +148,10 @@ class ArucoDetector:
     def draw_mobile_marker(self, frame, marker_corners, center_pixel, rotation=None):
         """Рисует метку машинки с указанием "низа" и "верха".
         
+        Использует фиксированный порядок углов ArUco:
+        - Угол 0 (первый) = ВЕРХ (FRONT)
+        - Угол 2 (третий) = НИЗ (REAR)
+        
         Args:
             frame: Кадр для отрисовки
             marker_corners: Углы метки
@@ -157,35 +161,36 @@ class ArucoDetector:
         if marker_corners is None or center_pixel is None:
             return frame
         
-        # Рисуем контур метки
+        # Преобразуем углы метки в массив точек
         corners_2d = marker_corners[0].reshape(-1, 2).astype(np.int32)
+        
+        # Рисуем контур метки
         cv2.polylines(frame, [corners_2d], True, (0, 255, 255), 2)
         
-        # Находим "низ" метки (угол с максимальной Y)
-        corners_2d_float = marker_corners[0].reshape(-1, 2)
-        bottom_corner_idx = np.argmax(corners_2d_float[:, 1])
-        bottom_corner = corners_2d[bottom_corner_idx]
-        
-        # Находим "верх" метки (угол с минимальной Y)
-        top_corner_idx = np.argmin(corners_2d_float[:, 1])
-        top_corner = corners_2d[top_corner_idx]
+        # Используем фиксированный порядок углов:
+        # Угол 0 = ВЕРХ (FRONT) - перед машинки
+        # Угол 2 = НИЗ (REAR) - зад машинки
+        top_corner = corners_2d[0]  # Первый угол = верх
+        bottom_corner = corners_2d[2]  # Третий угол = низ
         
         # Рисуем центр метки
         center_int = tuple(map(int, center_pixel))
         cv2.circle(frame, center_int, 5, (0, 255, 255), -1)
         
-        # Рисуем "низ" метки (зад машинки) - красным
-        cv2.circle(frame, tuple(bottom_corner), 8, (0, 0, 255), -1)
-        cv2.putText(frame, "REAR", (bottom_corner[0] + 10, bottom_corner[1]),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        # Рисуем линию от центра к "верху" (перед машинки) - зеленая толстая линия
+        cv2.line(frame, center_int, tuple(top_corner), (0, 255, 0), 4)
+        cv2.circle(frame, tuple(top_corner), 10, (0, 255, 0), -1)
+        cv2.putText(frame, "FRONT", (top_corner[0] + 15, top_corner[1]),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         
-        # Рисуем "верх" метки (перед машинки) - зеленым
-        cv2.circle(frame, tuple(top_corner), 8, (0, 255, 0), -1)
-        cv2.putText(frame, "FRONT", (top_corner[0] + 10, top_corner[1]),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        # Рисуем линию от центра к "низу" (зад машинки) - красная толстая линия
+        cv2.line(frame, center_int, tuple(bottom_corner), (0, 0, 255), 4)
+        cv2.circle(frame, tuple(bottom_corner), 10, (0, 0, 255), -1)
+        cv2.putText(frame, "REAR", (bottom_corner[0] + 15, bottom_corner[1]),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
         
         # Рисуем стрелку направления (от центра к "верху")
-        cv2.arrowedLine(frame, center_int, tuple(top_corner), (0, 255, 0), 2, tipLength=0.3)
+        cv2.arrowedLine(frame, center_int, tuple(top_corner), (0, 255, 0), 3, tipLength=0.2)
         
         # Подписываем ID метки
         cv2.putText(frame, f"ID:{self.mobile_marker_id}",
