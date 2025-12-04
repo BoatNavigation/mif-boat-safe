@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArUco Tracking System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        .video-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .control-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .video-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .video-container canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .coords-display {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .coords-display h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .coord-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background: #4caf50;
+            box-shadow: 0 0 10px #4caf50;
+        }
+        
+        .status-inactive {
+            background: #f44336;
+        }
+        
+        .coordinate-map {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            height: 400px;
+            position: relative;
+            margin-top: 20px;
+            cursor: crosshair;
+            background-image: 
+                linear-gradient(to right, #f0f0f0 1px, transparent 1px),
+                linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .marker-current {
+            background: #4caf50;
+        }
+        
+        .marker-target {
+            background: #f5576c;
+        }
+        
+        .marker-polygon {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border: 2px solid #667eea;
+            pointer-events: none;
+        }
+        
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 ArUco Tracking System</h1>
+            <p>Система отслеживания координат машинки с ArUco метками</p>
+        </div>
+        
+        <div class="content">
+            <div class="video-panel">
+                <h2>📹 Видео с камеры</h2>
+                <div class="video-container" id="videoContainer">
+                    <img id="videoFrame" src="" alt="Video feed" style="display: none;">
+                    <canvas id="videoCanvas" style="display: none;"></canvas>
+                </div>
+                
+                <div class="coords-display">
+                    <h3>Текущие координаты</h3>
+                    <div class="coord-value" id="currentCoords">Ожидание данных...</div>
+                    <div>
+                        <span class="status-indicator status-inactive" id="currentStatus"></span>
+                        <span id="currentStatusText">Не подключено</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-panel">
+                <h2>🎯 Управление</h2>
+                <div class="coords-display">
+                    <h3>Целевая точка</h3>
+                    <div class="coord-value" id="targetCoords">Не установлена</div>
+                    <div>
+                        <span class="status-indicator status-inactive" id="targetStatus"></span>
+                        <span id="targetStatusText">Ожидание</span>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="targetX">Координата X (0 - 100):</label>
+                    <input type="number" id="targetX" min="0" max="100" step="1" value="50">
+                </div>
+                
+                <div class="input-group">
+                    <label for="targetY">Координата Y (0 - 100):</label>
+                    <input type="number" id="targetY" min="0" max="100" step="1" value="50">
+                </div>
+                
+                <div class="coordinate-map" id="coordinateMap">
+                    <!-- Маркеры будут добавлены через JavaScript -->
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn-primary" onclick="setTarget()">Установить цель</button>
+                    <button class="btn-danger" onclick="stopMovement()">Остановить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentMarker = null;
+        let targetMarker = null;
+        let useVideoStream = false;
+        
+        // Проверяем, доступен ли потоковое видео
+        function checkVideoStream() {
+            const img = new Image();
+            img.onload = function() {
+                useVideoStream = true;
+                document.getElementById('videoFrame').style.display = 'block';
+                document.getElementById('videoFrame').src = '/video_feed';
+            };
+            img.onerror = function() {
+                useVideoStream = false;
+                document.getElementById('videoCanvas').style.display = 'block';
+                updateFrame();
+            };
+            img.src = '/video_feed';
+        }
+        
+        // Обновление кадра (если потоковое видео выключено)
+        async function updateFrame() {
+            if (useVideoStream) return;
+            
+            try {
+                const response = await fetch('/api/frame');
+                const data = await response.json();
+                
+                if (data.success && data.frame) {
+                    const canvas = document.getElementById('videoCanvas');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    
+                    img.onload = function() {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    
+                    img.src = 'data:image/jpeg;base64,' + data.frame;
+                }
+            } catch (error) {
+                console.error('Ошибка получения кадра:', error);
+            }
+        }
+        
+        // Инициализация карты координат
+        const map = document.getElementById('coordinateMap');
+        
+        function updateMap() {
+            const status = getStatusSync();
+            if (status.current_coords.x !== null && status.current_coords.y !== null) {
+                updateMarker('current', status.current_coords.x, status.current_coords.y);
+            }
+            if (status.target_coords.x !== null && status.target_coords.y !== null) {
+                updateMarker('target', status.target_coords.x, status.target_coords.y);
+            }
+        }
+        
+        function updateMarker(type, x, y) {
+            const markerId = type === 'current' ? 'currentMarker' : 'targetMarker';
+            let marker = document.getElementById(markerId);
+            
+            if (!marker) {
+                marker = document.createElement('div');
+                marker.id = markerId;
+                marker.className = `marker marker-${type}`;
+                map.appendChild(marker);
+            }
+            
+            const mapWidth = map.offsetWidth;
+            const mapHeight = map.offsetHeight;
+            marker.style.left = (x * mapWidth / 100) + 'px';
+            marker.style.top = ((100 - y) * mapHeight / 100) + 'px';
+            
+            if (type === 'current') {
+                currentMarker = marker;
+            } else {
+                targetMarker = marker;
+            }
+        }
+        
+        // Обработка клика на карте
+        map.addEventListener('click', (e) => {
+            const rect = map.getBoundingClientRect();
+            const x = Math.round((e.clientX - rect.left) / rect.width * 100);
+            const y = Math.round(100 - (e.clientY - rect.top) / rect.height * 100);
+            
+            document.getElementById('targetX').value = x;
+            document.getElementById('targetY').value = y;
+            setTarget();
+        });
+        
+        function getStatusSync() {
+            // Синхронная версия для обновления карты
+            return {
+                current_coords: {x: null, y: null, rotation: null},
+                target_coords: {x: null, y: null}
+            };
+        }
+        
+        async function getStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Ошибка получения статуса:', error);
+                return {current_coords: {x: null, y: null, rotation: null}, target_coords: {x: null, y: null}};
+            }
+        }
+        
+        async function setTarget() {
+            const x = parseInt(document.getElementById('targetX').value);
+            const y = parseInt(document.getElementById('targetY').value);
+            
+            if (isNaN(x) || isNaN(y) || x < 0 || x > 100 || y < 0 || y > 100) {
+                alert('Пожалуйста, введите корректные координаты (0 - 100)');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/set_target', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({x: x, y: y})
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    updateStatus();
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Ошибка установки цели:', error);
+                alert('Ошибка при установке цели');
+            }
+        }
+        
+        async function stopMovement() {
+            try {
+                const response = await fetch('/api/stop', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    updateStatus();
+                }
+            } catch (error) {
+                console.error('Ошибка остановки:', error);
+            }
+        }
+        
+        async function updateStatus() {
+            const status = await getStatus();
+            
+            // Обновляем текущие координаты
+            if (status.current_coords.x !== null && status.current_coords.y !== null) {
+                const rotationDeg = status.current_coords.rotation !== null 
+                    ? Math.round(status.current_coords.rotation * 180 / Math.PI) 
+                    : 'N/A';
+                document.getElementById('currentCoords').textContent = 
+                    `X: ${status.current_coords.x}, Y: ${status.current_coords.y}, Rotation: ${rotationDeg}°`;
+                document.getElementById('currentStatus').className = 'status-indicator status-active';
+                document.getElementById('currentStatusText').textContent = 'Активно';
+            } else {
+                document.getElementById('currentCoords').textContent = 'Ожидание данных...';
+                document.getElementById('currentStatus').className = 'status-indicator status-inactive';
+                document.getElementById('currentStatusText').textContent = 'Не подключено';
+            }
+            
+            // Обновляем целевую точку
+            if (status.target_coords.x !== null && status.target_coords.y !== null) {
+                document.getElementById('targetCoords').textContent = 
+                    `X: ${status.target_coords.x}, Y: ${status.target_coords.y}`;
+                document.getElementById('targetStatus').className = 'status-indicator status-active';
+                document.getElementById('targetStatusText').textContent = 'Установлена';
+            } else {
+                document.getElementById('targetCoords').textContent = 'Не установлена';
+                document.getElementById('targetStatus').className = 'status-indicator status-inactive';
+                document.getElementById('targetStatusText').textContent = 'Ожидание';
+            }
+            
+            updateMap();
+        }
+        
+        // Инициализация
+        checkVideoStream();
+        
+        // Обновление статуса каждую секунду
+        setInterval(updateStatus, 1000);
+        updateStatus();
+        
+        // Обновление кадра каждые 100мс (если потоковое видео выключено)
+        if (!useVideoStream) {
+            setInterval(updateFrame, 100);
+        }
+    </script>
+</body>
+</html>
+
