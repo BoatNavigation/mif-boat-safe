@@ -12,15 +12,18 @@ import warnings
 import requests
 import base64
 import threading
+import argparse
+import socket
 warnings.filterwarnings('ignore')
 
 # ======================= БЫСТРЫЕ НАСТРОЙКИ =======================
 YOLO_WEIGHTS = 'yolov8n.pt'
 CAMERA_INDICES = [0, 2]
 CALIB_FILE = 'stereo.yaml'
-# Настройки сервера для отправки изображений
-# ВАЖНО: Измените SERVER_URL на IP адрес сервера в вашей сети (например, 'http://192.168.1.100:5001')
-SERVER_URL = 'http://localhost:5001'  # Измените на IP адрес сервера в вашей сети
+# Настройки сервера для отправки изображений (по умолчанию)
+# ВАЖНО: Укажите IP адрес ноутбука (сервера) через --server-ip при запуске
+# или измените значение по умолчанию ниже
+DEFAULT_SERVER_URL = 'http://localhost:5001'  # IP ноутбука с ArUcoTracking сервером
 SERVER_ENDPOINT = '/api/upload_frame'
 ENABLE_SERVER_UPLOAD = True  # Включить/выключить отправку на сервер
 SEND_FRAME_INTERVAL = 3  # Отправлять каждый N-й кадр (для снижения нагрузки)
@@ -269,10 +272,52 @@ def create_fast_depth_display(depth_map, detections, depth_calculator, display_s
 
     return depth_colored
 
+def get_local_ip():
+    """Получить локальный IP адрес этого Raspberry Pi."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "не определен"
+
 def main():
+    # Парсинг аргументов командной строки
+    parser = argparse.ArgumentParser(description='Стереосистема с детекцией объектов и отправкой на сервер')
+    parser.add_argument('--server-ip', type=str, default=None,
+                       help='IP адрес ноутбука с ArUcoTracking сервером (например: 192.168.1.100)')
+    parser.add_argument('--server-port', type=int, default=5001,
+                       help='Порт сервера (по умолчанию: 5001)')
+    parser.add_argument('--disable-upload', action='store_true',
+                       help='Отключить отправку изображений на сервер')
+    args = parser.parse_args()
+    
+    # Определяем URL сервера
+    if args.server_ip:
+        server_url = f'http://{args.server_ip}:{args.server_port}'
+    else:
+        server_url = DEFAULT_SERVER_URL
+    
+    if args.disable_upload:
+        global ENABLE_SERVER_UPLOAD
+        ENABLE_SERVER_UPLOAD = False
+    
+    print("=" * 60)
     print("=== БЫСТРАЯ СТЕРЕОСИСТЕМА ===")
     print("⚡ Оптимизировано для максимального FPS")
     print(f"🎯 Целевой FPS: {Config.CAMERA_FPS}")
+    print("=" * 60)
+    
+    local_ip = get_local_ip()
+    print(f"\n📍 Этот Raspberry Pi: {local_ip}")
+    print(f"📡 Сервер (ноутбук): {server_url}")
+    if ENABLE_SERVER_UPLOAD:
+        print(f"✅ Отправка изображений: ВКЛЮЧЕНА (каждый {SEND_FRAME_INTERVAL}-й кадр)")
+    else:
+        print("❌ Отправка изображений: ВЫКЛЮЧЕНА")
+    print()
 
     # Инициализация
     left_cap = init_camera_fast(0)
@@ -323,7 +368,7 @@ def main():
             if ENABLE_SERVER_UPLOAD:
                 frame_send_counter += 1
                 if frame_send_counter >= SEND_FRAME_INTERVAL:
-                    send_frame_to_server(frame_to_send, SERVER_URL, SERVER_ENDPOINT)
+                    send_frame_to_server(frame_to_send, server_url, SERVER_ENDPOINT)
                     frame_send_counter = 0
 
             # ВЫЧИСЛЕНИЕ ГЛУБИНЫ КАЖДЫЙ КАДР (быстрая версия)

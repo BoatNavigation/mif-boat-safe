@@ -7,6 +7,7 @@ import sys
 import os
 import argparse
 import math
+import socket
 
 # Добавляем путь к модулям
 sys.path.insert(0, os.path.dirname(__file__))
@@ -77,6 +78,21 @@ def main():
     init_navigation(nav_controller)
     
     print("\n[5/5] Запуск веб-сервера...")
+    # Определяем IP адрес сервера для отображения
+    def get_local_ip():
+        """Получить локальный IP адрес сервера."""
+        try:
+            # Подключаемся к внешнему адресу (не отправляем данные)
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "localhost"
+    
+    server_ip = get_local_ip()
+    
     # Запускаем Flask сервер в отдельном потоке
     server_thread = threading.Thread(
         target=run_server,
@@ -85,6 +101,19 @@ def main():
     )
     server_thread.start()
     print(f"✓ Веб-сервер запущен на http://0.0.0.0:{args.web_port}")
+    print(f"  Локальный доступ: http://localhost:{args.web_port}")
+    print(f"  Сетевой доступ: http://{server_ip}:{args.web_port}")
+    print()
+    print("=" * 60)
+    print("📋 ИНСТРУКЦИИ ПО ПОДКЛЮЧЕНИЮ:")
+    print("=" * 60)
+    print(f"1. Для TEstPI.py (на Raspberry Pi):")
+    print(f"   python TEstPI.py --server-ip {server_ip} --server-port {args.web_port}")
+    print()
+    print(f"2. Для машинки (Raspberry Pi с machine.py):")
+    print(f"   Убедитесь, что machine.py запущен на {args.robot_ip}:{args.robot_port}")
+    print("=" * 60)
+    print()
     if args.enable_video_stream:
         print("  Потоковое видео: ВКЛЮЧЕНО")
     else:
@@ -93,6 +122,7 @@ def main():
     print("\n" + "=" * 60)
     print("Система готова к работе!")
     print(f"Откройте браузер и перейдите на http://localhost:{args.web_port}")
+    print(f"Или с другого устройства: http://{server_ip}:{args.web_port}")
     print("Нажмите 'q' для выхода")
     print("=" * 60 + "\n")
     
