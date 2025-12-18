@@ -201,23 +201,58 @@ def send_frame_to_server(frame, server_url, endpoint):
         try:
             # Кодируем изображение в JPEG
             _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            if buffer is None:
+                print("⚠ Ошибка: не удалось закодировать изображение")
+                return
+            
             frame_bytes = buffer.tobytes()
+            if len(frame_bytes) == 0:
+                print("⚠ Ошибка: пустой буфер изображения")
+                return
             
             # Отправляем как multipart/form-data
             files = {'image': ('frame.jpg', frame_bytes, 'image/jpeg')}
+            url = f"{server_url}{endpoint}"
+            
             response = requests.post(
-                f"{server_url}{endpoint}",
+                url,
                 files=files,
-                timeout=0.5  # Короткий таймаут, чтобы не блокировать основной поток
+                timeout=2.0  # Увеличили таймаут для надежности
             )
             
-            if response.status_code != 200:
-                print(f"⚠ Ошибка отправки кадра: {response.status_code}")
+            if response.status_code == 200:
+                # Успешная отправка (выводим редко, чтобы не засорять вывод)
+                if not hasattr(send_async, '_success_count'):
+                    send_async._success_count = 0
+                send_async._success_count += 1
+                if send_async._success_count % 30 == 0:  # Каждые 30 успешных отправок
+                    print(f"✓ Кадры отправляются на сервер (успешно: {send_async._success_count})")
+            else:
+                print(f"⚠ Ошибка отправки кадра: HTTP {response.status_code}")
+                try:
+                    error_msg = response.json().get('message', 'Неизвестная ошибка')
+                    print(f"   Сообщение сервера: {error_msg}")
+                except:
+                    print(f"   Ответ сервера: {response.text[:100]}")
+                    
+        except requests.exceptions.ConnectionError as e:
+            if not hasattr(send_async, '_conn_error_shown'):
+                print(f"❌ Ошибка подключения к серверу {server_url}:")
+                print(f"   Убедитесь, что сервер запущен и доступен по сети")
+                print(f"   Проверьте IP адрес и порт сервера")
+                send_async._conn_error_shown = True
+        except requests.exceptions.Timeout as e:
+            if not hasattr(send_async, '_timeout_shown'):
+                print(f"⚠ Таймаут при отправке на сервер {server_url}")
+                send_async._timeout_shown = True
         except requests.exceptions.RequestException as e:
-            # Не выводим ошибки в консоль, чтобы не засорять вывод
-            pass
+            if not hasattr(send_async, '_req_error_shown'):
+                print(f"⚠ Ошибка запроса: {type(e).__name__}: {str(e)[:100]}")
+                send_async._req_error_shown = True
         except Exception as e:
-            pass
+            if not hasattr(send_async, '_error_shown'):
+                print(f"❌ Неожиданная ошибка при отправке: {type(e).__name__}: {str(e)[:100]}")
+                send_async._error_shown = True
     
     # Запускаем отправку в отдельном потоке
     thread = threading.Thread(target=send_async, daemon=True)
@@ -330,8 +365,24 @@ def main():
     local_ip = get_local_ip()
     print(f"\n📍 Этот Raspberry Pi: {local_ip}")
     print(f"📡 Сервер (ноутбук): {server_url}")
+    print(f"   Endpoint: {SERVER_ENDPOINT}")
     if ENABLE_SERVER_UPLOAD:
         print(f"✅ Отправка изображений: ВКЛЮЧЕНА (каждый {SEND_FRAME_INTERVAL}-й кадр)")
+        # Проверяем доступность сервера
+        try:
+            test_url = f"{server_url}/api/status"
+            test_response = requests.get(test_url, timeout=2)
+            if test_response.status_code == 200:
+                print(f"✓ Сервер доступен и отвечает")
+            else:
+                print(f"⚠ Сервер отвечает, но с кодом {test_response.status_code}")
+        except requests.exceptions.ConnectionError:
+            print(f"❌ Сервер недоступен! Проверьте:")
+            print(f"   - Запущен ли main.py на ноутбуке?")
+            print(f"   - Правильный ли IP адрес? ({server_url})")
+            print(f"   - Открыт ли порт в файрволе?")
+        except Exception as e:
+            print(f"⚠ Не удалось проверить доступность сервера: {e}")
     else:
         print("❌ Отправка изображений: ВЫКЛЮЧЕНА")
     print()
@@ -359,6 +410,7 @@ def main():
     show_fps = True
     depth_frame_counter = 0
     frame_send_counter = 0  # Счетчик для отправки кадров
+    frames_sent_in_period = 0  # Счетчик отправленных кадров за текущий период статистики
 
     try:
         while True:
@@ -386,6 +438,7 @@ def main():
                 frame_send_counter += 1
                 if frame_send_counter >= SEND_FRAME_INTERVAL:
                     send_frame_to_server(frame_to_send, server_url, SERVER_ENDPOINT)
+                    frames_sent_in_period += 1
                     frame_send_counter = 0
 
             # ВЫЧИСЛЕНИЕ ГЛУБИНЫ КАЖДЫЙ КАДР (быстрая версия)
@@ -435,7 +488,16 @@ def main():
                         object_depths.append(f"{depth:.1f}m")
 
                 depths_text = ", ".join(object_depths) if object_depths else "no objects"
-                print(f"FPS: {actual_fps:.1f} | Depth FPS: {depth_fps:.1f} | Objects: {len(detections)} | Distances: [{depths_text}]")
+                
+                # Статистика отправки кадров
+                upload_status = ""
+                if ENABLE_SERVER_UPLOAD:
+                    upload_status = f" | Отправлено кадров: {frames_sent_in_period}"
+                
+                print(f"FPS: {actual_fps:.1f} | Depth FPS: {depth_fps:.1f} | Objects: {len(detections)} | Distances: [{depths_text}]{upload_status}")
+                
+                # Сбрасываем счетчики для следующего периода
+                frames_sent_in_period = 0
 
                 fps_counter = 0
                 depth_frame_counter = 0

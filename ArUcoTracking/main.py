@@ -100,9 +100,28 @@ def main():
         daemon=True
     )
     server_thread.start()
-    print(f"✓ Веб-сервер запущен на http://0.0.0.0:{args.web_port}")
+    
+    # Даем серверу время на инициализацию
+    time.sleep(1.0)
+    
+    # Проверяем, что сервер запустился
+    try:
+        import requests
+        test_response = requests.get(f'http://localhost:{args.web_port}/api/status', timeout=2)
+        if test_response.status_code == 200:
+            print(f"✓ Веб-сервер запущен и отвечает на http://0.0.0.0:{args.web_port}")
+        else:
+            print(f"⚠ Веб-сервер запущен, но отвечает с кодом {test_response.status_code}")
+    except ImportError:
+        print(f"⚠ Модуль requests не установлен, пропускаем проверку сервера")
+        print(f"   Сервер должен быть доступен на http://0.0.0.0:{args.web_port}")
+    except Exception as e:
+        print(f"⚠ Не удалось проверить сервер: {e}")
+        print(f"   Сервер должен быть доступен на http://0.0.0.0:{args.web_port}")
+    
     print(f"  Локальный доступ: http://localhost:{args.web_port}")
     print(f"  Сетевой доступ: http://{server_ip}:{args.web_port}")
+    print(f"  Endpoint для TEstPI: http://{server_ip}:{args.web_port}/api/upload_frame")
     print()
     print("=" * 60)
     print("📋 ИНСТРУКЦИИ ПО ПОДКЛЮЧЕНИЮ:")
