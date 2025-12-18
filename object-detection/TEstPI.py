@@ -9,12 +9,21 @@ import time
 import yaml
 from ultralytics import YOLO
 import warnings
+import requests
+import base64
+import threading
 warnings.filterwarnings('ignore')
 
 # ======================= БЫСТРЫЕ НАСТРОЙКИ =======================
 YOLO_WEIGHTS = 'yolov8n.pt'
 CAMERA_INDICES = [0, 2]
 CALIB_FILE = 'stereo.yaml'
+# Настройки сервера для отправки изображений
+# ВАЖНО: Измените SERVER_URL на IP адрес сервера в вашей сети (например, 'http://192.168.1.100:5001')
+SERVER_URL = 'http://localhost:5001'  # Измените на IP адрес сервера в вашей сети
+SERVER_ENDPOINT = '/api/upload_frame'
+ENABLE_SERVER_UPLOAD = True  # Включить/выключить отправку на сервер
+SEND_FRAME_INTERVAL = 3  # Отправлять каждый N-й кадр (для снижения нагрузки)
 
 class Config:
     DETECTION_INTERVAL = 8
@@ -173,6 +182,34 @@ class FastDepthCalculator:
 
         return self.depth_cache[object_id]
 
+def send_frame_to_server(frame, server_url, endpoint):
+    """Отправляет кадр на сервер в отдельном потоке."""
+    def send_async():
+        try:
+            # Кодируем изображение в JPEG
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            frame_bytes = buffer.tobytes()
+            
+            # Отправляем как multipart/form-data
+            files = {'image': ('frame.jpg', frame_bytes, 'image/jpeg')}
+            response = requests.post(
+                f"{server_url}{endpoint}",
+                files=files,
+                timeout=0.5  # Короткий таймаут, чтобы не блокировать основной поток
+            )
+            
+            if response.status_code != 200:
+                print(f"⚠ Ошибка отправки кадра: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            # Не выводим ошибки в консоль, чтобы не засорять вывод
+            pass
+        except Exception as e:
+            pass
+    
+    # Запускаем отправку в отдельном потоке
+    thread = threading.Thread(target=send_async, daemon=True)
+    thread.start()
+
 def create_fast_depth_display(depth_map, detections, depth_calculator, display_size=(200, 150)):
     """Быстрое отображение глубины"""
     if depth_map is None:
@@ -259,6 +296,7 @@ def main():
     fps_time = time.time()
     show_fps = True
     depth_frame_counter = 0
+    frame_send_counter = 0  # Счетчик для отправки кадров
 
     try:
         while True:
@@ -275,9 +313,18 @@ def main():
             detections = detector.detect(frame_left)
 
             # Быстрая отрисовка на левой камере
+            frame_to_send = frame_left.copy()  # Копируем кадр для отправки
             for detection in detections:
                 x1, y1, x2, y2 = detection['bbox']
                 cv2.rectangle(frame_left, (x1, y1), (x2, y2), (0, 255, 0), 1)
+                cv2.rectangle(frame_to_send, (x1, y1), (x2, y2), (0, 255, 0), 1)
+
+            # Отправка кадра на сервер
+            if ENABLE_SERVER_UPLOAD:
+                frame_send_counter += 1
+                if frame_send_counter >= SEND_FRAME_INTERVAL:
+                    send_frame_to_server(frame_to_send, SERVER_URL, SERVER_ENDPOINT)
+                    frame_send_counter = 0
 
             # ВЫЧИСЛЕНИЕ ГЛУБИНЫ КАЖДЫЙ КАДР (быстрая версия)
             depth_map = depth_calculator.calculate_fast_depth(frame_left, frame_right)

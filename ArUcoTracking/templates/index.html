@@ -46,6 +46,13 @@
             padding: 30px;
         }
         
+        .videos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
         .video-panel {
             background: #f8f9fa;
             border-radius: 15px;
@@ -242,10 +249,22 @@
         
         <div class="content">
             <div class="video-panel">
-                <h2>📹 Видео с камеры</h2>
-                <div class="video-container" id="videoContainer">
-                    <img id="videoFrame" src="" alt="Video feed" style="display: none;">
-                    <canvas id="videoCanvas" style="display: none;"></canvas>
+                <h2>📹 Видео с камер</h2>
+                <div class="videos-grid">
+                    <div>
+                        <h3 style="color: #667eea; margin-bottom: 10px; font-size: 1.1em;">ArUco Tracking</h3>
+                        <div class="video-container" id="videoContainer">
+                            <img id="videoFrame" src="" alt="ArUco Video feed" style="display: none;">
+                            <canvas id="videoCanvas" style="display: none;"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="color: #667eea; margin-bottom: 10px; font-size: 1.1em;">TEstPI Stereo</h3>
+                        <div class="video-container" id="videoContainerTestPI">
+                            <img id="videoFrameTestPI" src="" alt="TEstPI Video feed" style="display: none;">
+                            <canvas id="videoCanvasTestPI" style="display: none;"></canvas>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="coords-display">
@@ -295,8 +314,9 @@
         let currentMarker = null;
         let targetMarker = null;
         let useVideoStream = false;
+        let useVideoStreamTestPI = false;
         
-        // Проверяем, доступен ли потоковое видео
+        // Проверяем, доступен ли потоковое видео ArUco
         function checkVideoStream() {
             const img = new Image();
             img.onload = function() {
@@ -312,7 +332,23 @@
             img.src = '/video_feed';
         }
         
-        // Обновление кадра (если потоковое видео выключено)
+        // Проверяем, доступен ли потоковое видео TEstPI
+        function checkVideoStreamTestPI() {
+            const img = new Image();
+            img.onload = function() {
+                useVideoStreamTestPI = true;
+                document.getElementById('videoFrameTestPI').style.display = 'block';
+                document.getElementById('videoFrameTestPI').src = '/video_feed_testpi';
+            };
+            img.onerror = function() {
+                useVideoStreamTestPI = false;
+                document.getElementById('videoCanvasTestPI').style.display = 'block';
+                updateFrameTestPI();
+            };
+            img.src = '/video_feed_testpi';
+        }
+        
+        // Обновление кадра ArUco (если потоковое видео выключено)
         async function updateFrame() {
             if (useVideoStream) return;
             
@@ -334,7 +370,33 @@
                     img.src = 'data:image/jpeg;base64,' + data.frame;
                 }
             } catch (error) {
-                console.error('Ошибка получения кадра:', error);
+                console.error('Ошибка получения кадра ArUco:', error);
+            }
+        }
+        
+        // Обновление кадра TEstPI (если потоковое видео выключено)
+        async function updateFrameTestPI() {
+            if (useVideoStreamTestPI) return;
+            
+            try {
+                const response = await fetch('/api/frame_testpi');
+                const data = await response.json();
+                
+                if (data.success && data.frame) {
+                    const canvas = document.getElementById('videoCanvasTestPI');
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    
+                    img.onload = function() {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    
+                    img.src = 'data:image/jpeg;base64,' + data.frame;
+                }
+            } catch (error) {
+                console.error('Ошибка получения кадра TEstPI:', error);
             }
         }
         
@@ -482,14 +544,20 @@
         
         // Инициализация
         checkVideoStream();
+        checkVideoStreamTestPI();
         
         // Обновление статуса каждую секунду
         setInterval(updateStatus, 1000);
         updateStatus();
         
-        // Обновление кадра каждые 100мс (если потоковое видео выключено)
+        // Обновление кадра ArUco каждые 100мс (если потоковое видео выключено)
         if (!useVideoStream) {
             setInterval(updateFrame, 100);
+        }
+        
+        // Обновление кадра TEstPI каждые 100мс (если потоковое видео выключено)
+        if (!useVideoStreamTestPI) {
+            setInterval(updateFrameTestPI, 100);
         }
     </script>
 </body>
