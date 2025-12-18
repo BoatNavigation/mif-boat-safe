@@ -1,7 +1,17 @@
 # stereo_fast_depth.py
 
 import os
-os.environ['QT_QPA_PLATFORM'] = 'xcb'
+# Убираем принудительную установку Qt платформы для headless систем
+# OpenCV будет использовать доступный бэкенд автоматически
+if 'QT_QPA_PLATFORM' in os.environ:
+    # Если уже установлено, оставляем как есть
+    pass
+else:
+    # Проверяем, есть ли дисплей (X11)
+    display = os.environ.get('DISPLAY')
+    if not display:
+        # Если нет дисплея, устанавливаем offscreen режим
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 import cv2
 import numpy as np
@@ -30,8 +40,8 @@ SEND_FRAME_INTERVAL = 3  # Отправлять каждый N-й кадр (дл
 
 class Config:
     DETECTION_INTERVAL = 8
-    SHOW_STEREO = True
-    SHOW_DEPTH = True
+    SHOW_STEREO = True  # Отображение стерео изображения (требует дисплей)
+    SHOW_DEPTH = True   # Отображение карты глубины (требует дисплей)
     CAMERA_WIDTH = 300
     CAMERA_HEIGHT = 300
     CAMERA_FPS = 15  # Увеличили FPS
@@ -292,6 +302,8 @@ def main():
                        help='Порт сервера (по умолчанию: 5001)')
     parser.add_argument('--disable-upload', action='store_true',
                        help='Отключить отправку изображений на сервер')
+    parser.add_argument('--headless', action='store_true',
+                       help='Режим без дисплея (отключить отображение окон)')
     args = parser.parse_args()
     
     # Определяем URL сервера
@@ -303,6 +315,11 @@ def main():
     if args.disable_upload:
         global ENABLE_SERVER_UPLOAD
         ENABLE_SERVER_UPLOAD = False
+    
+    if args.headless:
+        Config.SHOW_STEREO = False
+        Config.SHOW_DEPTH = False
+        print("⚠ Режим без дисплея: отображение окон отключено")
     
     print("=" * 60)
     print("=== БЫСТРАЯ СТЕРЕОСИСТЕМА ===")
@@ -387,13 +404,21 @@ def main():
                     cv2.putText(stereo_view, f"FPS: {fps_counter}", (10, 15),
                                cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
 
-                cv2.imshow('Stereo View', stereo_view)
+                try:
+                    cv2.imshow('Stereo View', stereo_view)
+                except cv2.error:
+                    # Если нет дисплея, просто пропускаем отображение
+                    pass
 
             if Config.SHOW_DEPTH and depth_map is not None:
                 depth_display = create_fast_depth_display(
                     depth_map, detections, depth_calculator, display_size
                 )
-                cv2.imshow('Depth Map', depth_display)
+                try:
+                    cv2.imshow('Depth Map', depth_display)
+                except cv2.error:
+                    # Если нет дисплея, просто пропускаем отображение
+                    pass
 
             # Быстрый расчет FPS
             fps_counter += 1
@@ -416,20 +441,24 @@ def main():
                 depth_frame_counter = 0
                 fps_time = current_time
 
-            # Быстрая обработка клавиш
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27:
-                break
-            elif key == ord('d'):
-                Config.SHOW_DEPTH = not Config.SHOW_DEPTH
-            elif key == ord('f'):
-                show_fps = not show_fps
-            elif key == ord('+'):
-                Config.MAX_REAL_DISTANCE = min(15.0, Config.MAX_REAL_DISTANCE + 1.0)
-                print(f"📏 Макс. расстояние: {Config.MAX_REAL_DISTANCE} м")
-            elif key == ord('-'):
-                Config.MAX_REAL_DISTANCE = max(3.0, Config.MAX_REAL_DISTANCE - 1.0)
-                print(f"📏 Макс. расстояние: {Config.MAX_REAL_DISTANCE} м")
+            # Быстрая обработка клавиш (только если есть дисплей)
+            try:
+                key = cv2.waitKey(1) & 0xFF
+                if key == 27:
+                    break
+                elif key == ord('d'):
+                    Config.SHOW_DEPTH = not Config.SHOW_DEPTH
+                elif key == ord('f'):
+                    show_fps = not show_fps
+                elif key == ord('+'):
+                    Config.MAX_REAL_DISTANCE = min(15.0, Config.MAX_REAL_DISTANCE + 1.0)
+                    print(f"📏 Макс. расстояние: {Config.MAX_REAL_DISTANCE} м")
+                elif key == ord('-'):
+                    Config.MAX_REAL_DISTANCE = max(3.0, Config.MAX_REAL_DISTANCE - 1.0)
+                    print(f"📏 Макс. расстояние: {Config.MAX_REAL_DISTANCE} м")
+            except cv2.error:
+                # Если нет дисплея, просто продолжаем работу
+                pass
 
             # Минимальная задержка для стабильности FPS
             processing_time = time.time() - start_time
@@ -441,7 +470,10 @@ def main():
     finally:
         left_cap.release()
         right_cap.release()
-        cv2.destroyAllWindows()
+        try:
+            cv2.destroyAllWindows()
+        except cv2.error:
+            pass  # Если нет дисплея, игнорируем ошибку
         print("✅ Завершено")
 
 if __name__ == "__main__":
