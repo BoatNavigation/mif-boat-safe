@@ -1,0 +1,5 @@
+auto_calibration_enabled: true
+baseline: 0.12
+calibration_quality: 0.0
+focal_length: 320.0
+last_calibration_time: 0.0
