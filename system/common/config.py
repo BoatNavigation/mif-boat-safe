@@ -1,0 +1,118 @@
+"""Configuration loader – reads .env from the component's working directory."""
+
+from __future__ import annotations
+
+import json
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+
+def _load_env(env_path: str | Path | None = None) -> None:
+    if env_path:
+        load_dotenv(env_path)
+    else:
+        load_dotenv()
+
+
+def _csv_list(raw: str) -> list[str]:
+    return [v.strip() for v in raw.split(",") if v.strip()]
+
+
+def _csv_int_list(raw: str) -> list[int]:
+    return [int(v.strip()) for v in raw.split(",") if v.strip()]
+
+
+# ---------------------------------------------------------------------------
+# Config dataclasses
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MqttConfig:
+    broker_host: str = "127.0.0.1"
+    broker_port: int = 1883
+
+
+@dataclass
+class ControlCenterConfig(MqttConfig):
+    flask_host: str = "0.0.0.0"
+    flask_port: int = 8080
+    vehicle_ids: list[str] = field(default_factory=lambda: ["vehicle_0"])
+
+    @classmethod
+    def load(cls, env_path: str | Path | None = None) -> "ControlCenterConfig":
+        _load_env(env_path)
+        return cls(
+            broker_host=os.getenv("MQTT_BROKER_HOST", "127.0.0.1"),
+            broker_port=int(os.getenv("MQTT_BROKER_PORT", "1883")),
+            flask_host=os.getenv("FLASK_HOST", "0.0.0.0"),
+            flask_port=int(os.getenv("FLASK_PORT", "8080")),
+            vehicle_ids=_csv_list(os.getenv("VEHICLE_IDS", "vehicle_0")),
+        )
+
+
+@dataclass
+class NavigationServerConfig(MqttConfig):
+    camera_device: str = "/dev/video0"
+    camera_width: int = 1280
+    camera_height: int = 720
+    camera_skip_devices: list[str] = field(default_factory=list)
+    reference_marker_ids: list[int] = field(default_factory=lambda: [1, 2, 3, 4])
+    mobile_marker_ids: list[int] = field(default_factory=lambda: [0])
+    map_width: int = 100
+    map_height: int = 100
+    map_obstacles: list[dict] = field(default_factory=list)
+    publish_rate_hz: int = 15
+
+    @classmethod
+    def load(cls, env_path: str | Path | None = None) -> "NavigationServerConfig":
+        _load_env(env_path)
+        obstacles_raw = os.getenv("MAP_OBSTACLES", "[]")
+        try:
+            obstacles = json.loads(obstacles_raw)
+        except json.JSONDecodeError:
+            obstacles = []
+
+        skip_raw = os.getenv("CAMERA_SKIP_DEVICES", "")
+        skip = _csv_list(skip_raw) if skip_raw else []
+
+        return cls(
+            broker_host=os.getenv("MQTT_BROKER_HOST", "192.168.1.100"),
+            broker_port=int(os.getenv("MQTT_BROKER_PORT", "1883")),
+            camera_device=os.getenv("CAMERA_DEVICE", "/dev/video0"),
+            camera_width=int(os.getenv("CAMERA_WIDTH", "1280")),
+            camera_height=int(os.getenv("CAMERA_HEIGHT", "720")),
+            camera_skip_devices=skip,
+            reference_marker_ids=_csv_int_list(os.getenv("REFERENCE_MARKER_IDS", "1,2,3,4")),
+            mobile_marker_ids=_csv_int_list(os.getenv("MOBILE_MARKER_IDS", "0")),
+            map_width=int(os.getenv("MAP_WIDTH", "100")),
+            map_height=int(os.getenv("MAP_HEIGHT", "100")),
+            map_obstacles=obstacles,
+            publish_rate_hz=int(os.getenv("PUBLISH_RATE_HZ", "15")),
+        )
+
+
+@dataclass
+class VehicleConfig(MqttConfig):
+    vehicle_id: str = "vehicle_0"
+    aruco_marker_id: int = 0
+    position_tolerance: float = 5.0
+    angle_tolerance: float = 0.2
+    nav_loop_rate_hz: int = 10
+    pwm_duty_cycle: int = 20
+
+    @classmethod
+    def load(cls, env_path: str | Path | None = None) -> "VehicleConfig":
+        _load_env(env_path)
+        return cls(
+            broker_host=os.getenv("MQTT_BROKER_HOST", "192.168.1.100"),
+            broker_port=int(os.getenv("MQTT_BROKER_PORT", "1883")),
+            vehicle_id=os.getenv("VEHICLE_ID", "vehicle_0"),
+            aruco_marker_id=int(os.getenv("ARUCO_MARKER_ID", "0")),
+            position_tolerance=float(os.getenv("POSITION_TOLERANCE", "5")),
+            angle_tolerance=float(os.getenv("ANGLE_TOLERANCE", "0.2")),
+            nav_loop_rate_hz=int(os.getenv("NAV_LOOP_RATE_HZ", "10")),
+            pwm_duty_cycle=int(os.getenv("PWM_DUTY_CYCLE", "20")),
+        )

@@ -1,0 +1,172 @@
+/* Control Center – modern dark UI */
+
+:root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --card: #0f3460;
+    --accent: #e94560;
+    --accent2: #00d2ff;
+    --text: #eaeaea;
+    --text-dim: #8899aa;
+    --success: #00e676;
+    --warning: #ffc107;
+    --radius: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: .5px; }
+header .status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--success);
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+    padding: 16px 24px;
+    height: calc(100vh - 56px);
+}
+
+/* -- Map area -- */
+.map-wrapper {
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+canvas#mapCanvas {
+    background: #0c1629;
+    cursor: crosshair;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.map-hint {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    font-size: .75rem;
+    color: var(--text-dim);
+}
+
+/* -- Sidebar -- */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 14px;
+}
+
+.card h2 {
+    font-size: .85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+}
+
+/* vehicle list */
+.vehicle-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: .85rem;
+}
+.vehicle-item .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+}
+.vehicle-item .vid { font-weight: 600; }
+.vehicle-item .coords { color: var(--text-dim); margin-left: auto; font-size: .8rem; }
+
+/* waypoint list */
+.wp-list { list-style: none; max-height: 180px; overflow-y: auto; }
+.wp-list li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    font-size: .82rem;
+}
+.wp-list li .idx { color: var(--accent2); font-weight: 700; width: 18px; }
+.wp-list li .wp-coords { color: var(--text-dim); }
+.wp-list li .remove-wp {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: .9rem;
+}
+
+/* buttons */
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+button {
+    padding: 7px 14px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: .82rem;
+    font-weight: 600;
+    transition: opacity .15s;
+}
+button:hover { opacity: .85; }
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--card); color: var(--text); }
+.btn-success { background: var(--success); color: #111; }
+.btn-warning { background: var(--warning); color: #111; }
+
+select, input[type="number"] {
+    padding: 6px 10px;
+    border-radius: var(--radius);
+    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--card);
+    color: var(--text);
+    font-size: .82rem;
+    width: 100%;
+}
+
+.field { margin-bottom: 8px; }
+.field label { display: block; font-size: .75rem; color: var(--text-dim); margin-bottom: 3px; }
+
+/* mission status */
+.mission-status { font-size: .82rem; }
+.mission-status .label { color: var(--text-dim); }
+.mission-status .value { font-weight: 600; }
+.mission-status .value.executing { color: var(--accent2); }
+.mission-status .value.completed { color: var(--success); }
+.mission-status .value.cancelled { color: var(--accent); }
+.mission-status .value.paused { color: var(--warning); }
