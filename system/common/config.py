@@ -10,11 +10,29 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+def component_dotenv_path(module_file: str) -> Path:
+    """Path to ``.env`` in the same directory as the component ``main.py``.
+
+    Pass ``__file__`` from ``main.py`` so settings load correctly regardless of
+    the current working directory (e.g. ``python -m system.navigation_server.main``
+    from the repo root).
+    """
+    return Path(module_file).resolve().parent / ".env"
+
+
 def _load_env(env_path: str | Path | None = None) -> None:
-    if env_path:
-        load_dotenv(env_path)
-    else:
-        load_dotenv()
+    """Load environment variables from ``.env``.
+
+    If ``env_path`` points to an existing file, it is loaded with
+    ``override=True`` so values in the file win over the shell environment.
+    Otherwise falls back to :func:`load_dotenv` (searches from CWD).
+    """
+    if env_path is not None:
+        p = Path(env_path)
+        if p.is_file():
+            load_dotenv(p, override=True)
+            return
+    load_dotenv()
 
 
 def _csv_list(raw: str) -> list[str]:

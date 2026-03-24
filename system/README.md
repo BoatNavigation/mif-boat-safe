@@ -122,7 +122,7 @@ Open browser: `http://localhost:8080`
 
 ## Configuration
 
-Each component reads settings from a `.env` file in its directory. See `.env.example` files for available options.
+Each component reads settings from a `.env` file next to that component’s `main.py` (for example `system/navigation_server/.env`). You can run `python -m system.navigation_server.main` from the repo root; the correct file is still loaded. Values in `.env` override the same variables if they were set in the shell. See `.env.example` files for available options.
 
 ## Adding More Vehicles
 

@@ -12,7 +12,7 @@ import cv2
 # Allow running as ``python -m system.navigation_server.main`` from repo root
 sys.path.insert(0, __file__.rsplit("/system/", 1)[0])
 
-from system.common.config import NavigationServerConfig
+from system.common.config import NavigationServerConfig, component_dotenv_path
 from system.common.messages import PositionMessage
 from system.common.topics import Topics
 from system.navigation_server.camera import CameraManager
@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 
 def main():
-    cfg = NavigationServerConfig.load()
+    cfg = NavigationServerConfig.load(env_path=component_dotenv_path(__file__))
 
     log.info("Initializing camera (device=%s, %dx%d)...",
              cfg.camera_device, cfg.camera_width, cfg.camera_height)

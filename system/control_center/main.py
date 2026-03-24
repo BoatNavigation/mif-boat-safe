@@ -10,7 +10,7 @@ sys.path.insert(0, __file__.rsplit("/system/", 1)[0])
 
 from flask import Flask, jsonify, request, render_template, send_from_directory
 
-from system.common.config import ControlCenterConfig
+from system.common.config import ControlCenterConfig, component_dotenv_path
 from system.control_center.mqtt_client import ControlCenterMqtt
 from system.control_center.mission import MissionManager
 
@@ -148,7 +148,7 @@ def _on_map_response(data: dict):
 
 def main():
     global mqtt_client
-    cfg = ControlCenterConfig.load()
+    cfg = ControlCenterConfig.load(env_path=component_dotenv_path(__file__))
 
     mqtt_client = ControlCenterMqtt(cfg)
     mqtt_client.on_position(_on_position)

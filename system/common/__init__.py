@@ -11,4 +11,10 @@ from .messages import (
     VehicleStatusMessage,
 )
 from .topics import Topics
-from .config import MqttConfig, ControlCenterConfig, NavigationServerConfig, VehicleConfig
+from .config import (
+    MqttConfig,
+    ControlCenterConfig,
+    NavigationServerConfig,
+    VehicleConfig,
+    component_dotenv_path,
+)

@@ -8,7 +8,7 @@ import time
 
 sys.path.insert(0, __file__.rsplit("/system/", 1)[0])
 
-from system.common.config import VehicleConfig
+from system.common.config import VehicleConfig, component_dotenv_path
 from system.common.messages import VehicleStatusMessage
 from system.common.topics import Topics
 from system.vehicle.shared_state import SharedState
@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 
 
 def main():
-    cfg = VehicleConfig.load()
+    cfg = VehicleConfig.load(env_path=component_dotenv_path(__file__))
     log.info("Vehicle ID: %s  (ArUco marker %d)", cfg.vehicle_id, cfg.aruco_marker_id)
 
     shared = SharedState()
