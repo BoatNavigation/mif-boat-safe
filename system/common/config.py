@@ -73,6 +73,7 @@ class ControlCenterConfig(MqttConfig):
 
 @dataclass
 class NavigationServerConfig(MqttConfig):
+    camera_rtsp_url: str | None = None
     camera_device: str = "/dev/video0"
     camera_width: int = 1280
     camera_height: int = 720
@@ -96,9 +97,13 @@ class NavigationServerConfig(MqttConfig):
         skip_raw = os.getenv("CAMERA_SKIP_DEVICES", "")
         skip = _csv_list(skip_raw) if skip_raw else []
 
+        rtsp_raw = os.getenv("CAMERA_RTSP_URL", "").strip()
+        camera_rtsp_url = rtsp_raw if rtsp_raw else None
+
         return cls(
             broker_host=os.getenv("MQTT_BROKER_HOST", "192.168.1.100"),
             broker_port=int(os.getenv("MQTT_BROKER_PORT", "1883")),
+            camera_rtsp_url=camera_rtsp_url,
             camera_device=os.getenv("CAMERA_DEVICE", "/dev/video0"),
             camera_width=int(os.getenv("CAMERA_WIDTH", "1280")),
             camera_height=int(os.getenv("CAMERA_HEIGHT", "720")),

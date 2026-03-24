@@ -28,10 +28,14 @@ log = logging.getLogger(__name__)
 def main():
     cfg = NavigationServerConfig.load(env_path=component_dotenv_path(__file__))
 
-    log.info("Initializing camera (device=%s, %dx%d)...",
-             cfg.camera_device, cfg.camera_width, cfg.camera_height)
+    if cfg.camera_rtsp_url:
+        log.info("Initializing IP camera (RTSP), %dx%d...", cfg.camera_width, cfg.camera_height)
+    else:
+        log.info("Initializing camera (device=%s, %dx%d)...",
+                 cfg.camera_device, cfg.camera_width, cfg.camera_height)
     camera = CameraManager(
         device=cfg.camera_device,
+        rtsp_url=cfg.camera_rtsp_url,
         skip_devices=cfg.camera_skip_devices,
         width=cfg.camera_width,
         height=cfg.camera_height,
