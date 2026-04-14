@@ -83,6 +83,8 @@ class NavigationServerConfig(MqttConfig):
     map_height: int = 100
     map_obstacles: list[dict] = field(default_factory=list)
     publish_rate_hz: int = 15
+    show_video_preview: bool = True
+    preview_window_title: str = "Navigation Server"
 
     @classmethod
     def load(cls, env_path: str | Path | None = None) -> "NavigationServerConfig":
@@ -95,6 +97,12 @@ class NavigationServerConfig(MqttConfig):
 
         skip_raw = os.getenv("CAMERA_SKIP_DEVICES", "")
         skip = _csv_list(skip_raw) if skip_raw else []
+
+        rtsp_raw = os.getenv("CAMERA_RTSP_URL", "").strip()
+        camera_rtsp_url = rtsp_raw if rtsp_raw else None
+
+        preview_raw = os.getenv("SHOW_VIDEO_PREVIEW", "1").strip().lower()
+        show_video_preview = preview_raw in ("1", "true", "yes", "on")
 
         return cls(
             broker_host=os.getenv("MQTT_BROKER_HOST", "192.168.1.100"),
@@ -109,6 +117,8 @@ class NavigationServerConfig(MqttConfig):
             map_height=int(os.getenv("MAP_HEIGHT", "100")),
             map_obstacles=obstacles,
             publish_rate_hz=int(os.getenv("PUBLISH_RATE_HZ", "15")),
+            show_video_preview=show_video_preview,
+            preview_window_title=os.getenv("PREVIEW_WINDOW_TITLE", "Navigation Server"),
         )
 
 
