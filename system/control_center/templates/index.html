@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Center</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+    <h1><span class="status-dot"></span>Control Center</h1>
+    <span style="color:var(--text-dim);font-size:.8rem">Vehicle Management System</span>
+</header>
+
+<div class="layout">
+    <!-- Map -->
+    <div class="map-wrapper">
+        <canvas id="mapCanvas"></canvas>
+        <div class="map-hint">Click on map to add waypoints</div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <!-- Vehicles -->
+        <div class="card">
+            <h2>Vehicles</h2>
+            <div id="vehicleList"></div>
+        </div>
+
+        <!-- Mission Builder -->
+        <div class="card">
+            <h2>Mission Builder &mdash; <span id="selectedVehicle" style="color:var(--accent2)">vehicle_0</span></h2>
+            <ul class="wp-list" id="wpList"></ul>
+            <div class="btn-row">
+                <button class="btn-primary" id="btnSend">Send Mission</button>
+                <button class="btn-secondary" id="btnClear">Clear</button>
+            </div>
+        </div>
+
+        <!-- Mission Control -->
+        <div class="card">
+            <h2>Mission Control</h2>
+            <div class="mission-status" id="missionStatus">
+                <span class="label">No active mission</span>
+            </div>
+            <div class="btn-row">
+                <button class="btn-warning" id="btnPause">Pause</button>
+                <button class="btn-success" id="btnResume">Resume</button>
+                <button class="btn-primary" id="btnCancel">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div class="card">
+            <h2>Map</h2>
+            <button class="btn-secondary" id="btnRefreshMap" style="width:100%">Refresh Map from Nav Server</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

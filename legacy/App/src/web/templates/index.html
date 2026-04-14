@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление навигацией ArUco</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        .panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .coords-display {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .coords-display h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .coord-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background: #4caf50;
+            box-shadow: 0 0 10px #4caf50;
+        }
+        
+        .status-inactive {
+            background: #f44336;
+        }
+        
+        .coordinate-map {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            height: 400px;
+            position: relative;
+            margin-top: 20px;
+            cursor: crosshair;
+        }
+        
+        .marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .marker-current {
+            background: #4caf50;
+        }
+        
+        .marker-target {
+            background: #f5576c;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Управление навигацией ArUco</h1>
+            <p>Система управления движением машинки по координатам</p>
+        </div>
+        
+        <div class="content">
+            <div class="panel">
+                <h2>📊 Текущее состояние</h2>
+                <div class="coords-display">
+                    <h3>Текущие координаты</h3>
+                    <div class="coord-value" id="currentCoords">Ожидание данных...</div>
+                    <div>
+                        <span class="status-indicator status-inactive" id="currentStatus"></span>
+                        <span id="currentStatusText">Не подключено</span>
+                    </div>
+                </div>
+                
+                <div class="coords-display">
+                    <h3>Целевая точка</h3>
+                    <div class="coord-value" id="targetCoords">Не установлена</div>
+                    <div>
+                        <span class="status-indicator status-inactive" id="targetStatus"></span>
+                        <span id="targetStatusText">Ожидание</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>🎯 Управление</h2>
+                <div class="input-group">
+                    <label for="targetX">Координата X (0.0 - 1.0):</label>
+                    <input type="number" id="targetX" min="0" max="1" step="0.01" value="0.5">
+                </div>
+                
+                <div class="input-group">
+                    <label for="targetY">Координата Y (0.0 - 1.0):</label>
+                    <input type="number" id="targetY" min="0" max="1" step="0.01" value="0.5">
+                </div>
+                
+                <div class="coordinate-map" id="coordinateMap">
+                    <!-- Маркеры будут добавлены через JavaScript -->
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn-primary" onclick="setTarget()">Установить цель</button>
+                    <button class="btn-danger" onclick="stopMovement()">Остановить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentMarker = null;
+        let targetMarker = null;
+        
+        // Инициализация карты координат
+        const map = document.getElementById('coordinateMap');
+        const mapRect = map.getBoundingClientRect();
+        
+        function updateMap() {
+            const status = getStatus();
+            if (status.current_coords.x !== null && status.current_coords.y !== null) {
+                updateMarker('current', status.current_coords.x, status.current_coords.y);
+            }
+            if (status.target_coords.x !== null && status.target_coords.y !== null) {
+                updateMarker('target', status.target_coords.x, status.target_coords.y);
+            }
+        }
+        
+        function updateMarker(type, x, y) {
+            const markerId = type === 'current' ? 'currentMarker' : 'targetMarker';
+            let marker = document.getElementById(markerId);
+            
+            if (!marker) {
+                marker = document.createElement('div');
+                marker.id = markerId;
+                marker.className = `marker marker-${type}`;
+                map.appendChild(marker);
+            }
+            
+            const mapWidth = map.offsetWidth;
+            const mapHeight = map.offsetHeight;
+            marker.style.left = (x * mapWidth) + 'px';
+            marker.style.top = ((1 - y) * mapHeight) + 'px';
+            
+            if (type === 'current') {
+                currentMarker = marker;
+            } else {
+                targetMarker = marker;
+            }
+        }
+        
+        // Обработка клика на карте
+        map.addEventListener('click', (e) => {
+            const rect = map.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = 1 - (e.clientY - rect.top) / rect.height;
+            
+            document.getElementById('targetX').value = x.toFixed(3);
+            document.getElementById('targetY').value = y.toFixed(3);
+            setTarget();
+        });
+        
+        async function getStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Ошибка получения статуса:', error);
+                return {current_coords: {x: null, y: null}, target_coords: {x: null, y: null}};
+            }
+        }
+        
+        async function setTarget() {
+            const x = parseFloat(document.getElementById('targetX').value);
+            const y = parseFloat(document.getElementById('targetY').value);
+            
+            if (isNaN(x) || isNaN(y) || x < 0 || x > 1 || y < 0 || y > 1) {
+                alert('Пожалуйста, введите корректные координаты (0.0 - 1.0)');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/set_target', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({x: x, y: y})
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    updateStatus();
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Ошибка установки цели:', error);
+                alert('Ошибка при установке цели');
+            }
+        }
+        
+        async function stopMovement() {
+            try {
+                const response = await fetch('/api/stop', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    updateStatus();
+                }
+            } catch (error) {
+                console.error('Ошибка остановки:', error);
+            }
+        }
+        
+        async function updateStatus() {
+            const status = await getStatus();
+            
+            // Обновляем текущие координаты
+            if (status.current_coords.x !== null && status.current_coords.y !== null) {
+                document.getElementById('currentCoords').textContent = 
+                    `X: ${status.current_coords.x.toFixed(3)}, Y: ${status.current_coords.y.toFixed(3)}`;
+                document.getElementById('currentStatus').className = 'status-indicator status-active';
+                document.getElementById('currentStatusText').textContent = 'Активно';
+            } else {
+                document.getElementById('currentCoords').textContent = 'Ожидание данных...';
+                document.getElementById('currentStatus').className = 'status-indicator status-inactive';
+                document.getElementById('currentStatusText').textContent = 'Не подключено';
+            }
+            
+            // Обновляем целевую точку
+            if (status.target_coords.x !== null && status.target_coords.y !== null) {
+                document.getElementById('targetCoords').textContent = 
+                    `X: ${status.target_coords.x.toFixed(3)}, Y: ${status.target_coords.y.toFixed(3)}`;
+                document.getElementById('targetStatus').className = 'status-indicator status-active';
+                document.getElementById('targetStatusText').textContent = 'Установлена';
+            } else {
+                document.getElementById('targetCoords').textContent = 'Не установлена';
+                document.getElementById('targetStatus').className = 'status-indicator status-inactive';
+                document.getElementById('targetStatusText').textContent = 'Ожидание';
+            }
+            
+            updateMap();
+        }
+        
+        // Обновление статуса каждую секунду
+        setInterval(updateStatus, 1000);
+        updateStatus();
+    </script>
+</body>
+</html>
+
