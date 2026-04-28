@@ -40,7 +40,7 @@ class CameraManager:
     def open(self) -> bool:
         """Open a specific device or auto-detect an available one."""
         if self.device:
-            return self._try_open(self.device)
+            return self._try_open_v4l2(self.device)
         return self._find_available()
 
     def _try_open_rtsp(self, url: str) -> bool:
@@ -98,7 +98,7 @@ class CameraManager:
         for path in sorted(glob.glob("/dev/video*")):
             if path in self.skip_devices:
                 continue
-            if self._try_open(path):
+            if self._try_open_v4l2(path):
                 return True
         return False
 
