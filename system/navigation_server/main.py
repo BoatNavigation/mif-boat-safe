@@ -45,6 +45,8 @@ def main():
         skip_devices=cfg.camera_skip_devices,
         width=cfg.camera_width,
         height=cfg.camera_height,
+        autofocus=cfg.camera_autofocus,
+        focus=cfg.camera_focus,
     )
     if not camera.open():
         log.error("No camera found. Exiting.")

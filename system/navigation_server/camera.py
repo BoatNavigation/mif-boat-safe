@@ -26,22 +26,37 @@ class CameraManager:
     """Finds and manages a V4L2 camera device."""
 
     def __init__(self, device: str | None = None, skip_devices: list[str] | None = None,
-                 width: int = 1280, height: int = 720):
+                 width: int = 1280, height: int = 720,
+                 autofocus: int | None = None, focus: float | None = None):
         self.device = device
         self.skip_devices = skip_devices or []
         self.width = width
         self.height = height
+        self.autofocus = autofocus
+        self.focus = focus
         self.cap: cv2.VideoCapture | None = None
         self.camera_path: str | None = None
         self._is_rtsp = False
         self._read_failures = 0
         self._rtsp_reconnect_after = int(os.getenv("CAMERA_RTSP_RECONNECT_AFTER", "5"))
+        self.rtsp_url = os.environ.get("CAMERA_RTSP_URL", "").strip() or None
 
     def open(self) -> bool:
-        """Open a specific device or auto-detect an available one."""
+        """Open RTSP (if CAMERA_RTSP_URL), a specific device, or auto-detect V4L2."""
+        if self.rtsp_url:
+            return self._try_open_rtsp(self.rtsp_url)
         if self.device:
             return self._try_open_v4l2(self.device)
         return self._find_available()
+
+    def _try_open(self, path: str) -> bool:
+        """Open a stream URL (FFmpeg) or a V4L2 device path."""
+        p = path.strip()
+        if p.lower().startswith(
+            ("rtsp://", "rtsps://", "rtmp://", "http://", "https://")
+        ):
+            return self._try_open_rtsp(p)
+        return self._try_open_v4l2(p)
 
     def _try_open_rtsp(self, url: str) -> bool:
         self._is_rtsp = True
@@ -88,11 +103,20 @@ class CameraManager:
             if ret and frame is not None:
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+                self._apply_focus(cap)
                 self.cap = cap
                 self.camera_path = path
                 return True
             cap.release()
         return False
+
+    def _apply_focus(self, cap: cv2.VideoCapture) -> None:
+        if self.autofocus is not None:
+            ok = cap.set(cv2.CAP_PROP_AUTOFOCUS, float(self.autofocus))
+            log.info("CAMERA_AUTOFOCUS=%d %s", self.autofocus, "applied" if ok else "not supported")
+        if self.focus is not None:
+            ok = cap.set(cv2.CAP_PROP_FOCUS, self.focus)
+            log.info("CAMERA_FOCUS=%.1f %s", self.focus, "applied" if ok else "not supported")
 
     def _find_available(self) -> bool:
         for path in sorted(glob.glob("/dev/video*")):
