@@ -107,6 +107,23 @@ def api_mission_control():
     return jsonify({"ok": True})
 
 
+@app.route("/api/vehicle/manual", methods=["POST"])
+def api_vehicle_manual():
+    body = request.get_json(force=True)
+    vehicle_id = body.get("vehicle_id")
+    command = body.get("command")
+    allowed = {"forward", "backward", "left", "right", "stop"}
+    if not vehicle_id or command not in allowed:
+        return jsonify({"error": "vehicle_id and valid command required"}), 400
+
+    from system.common.messages import ManualControlMessage
+    msg = ManualControlMessage(vehicle_id=vehicle_id, command=command)
+    if mqtt_client:
+        mqtt_client.send_manual(vehicle_id, msg.to_json())
+    log.info("Manual '%s' sent to %s", command, vehicle_id)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/map/refresh", methods=["POST"])
 def api_map_refresh():
     if mqtt_client:

@@ -40,6 +40,14 @@ PWM_FREQ = 255
 class DriveService:
     """Consumes drive commands from a thread-safe queue and actuates motors."""
 
+    _HUMAN_RU = {
+        "forward": "ВПЕРЁД",
+        "backward": "НАЗАД",
+        "left": "ВЛЕВО (поворот)",
+        "right": "ВПРАВО (поворот)",
+        "stop": "СТОП",
+    }
+
     def __init__(self, duty_cycle: int = 20):
         self._duty = duty_cycle
         self._cmd_queue: queue.Queue[str] = queue.Queue(maxsize=32)
@@ -47,6 +55,7 @@ class DriveService:
         self._running = False
         self._pwm_l = None
         self._pwm_r = None
+        self._last_cmd: str | None = None
 
     def start(self):
         self._init_gpio()
@@ -82,6 +91,13 @@ class DriveService:
     def _execute(self, cmd: str):
         self._motor_left("stop")
         self._motor_right("stop")
+
+        human = self._HUMAN_RU.get(cmd, cmd)
+        if cmd != self._last_cmd:
+            log.info("DRIVE >> %s (%s) | duty=%d%%", cmd.upper(), human, self._duty)
+        else:
+            log.debug("DRIVE .. %s (%s)", cmd, human)
+        self._last_cmd = cmd
 
         if cmd == "forward":
             self._motor_left("forward")

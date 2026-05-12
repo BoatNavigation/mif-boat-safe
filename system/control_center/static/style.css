@@ -167,6 +167,32 @@ select, input[type="number"] {
 .field { margin-bottom: 8px; }
 .field label { display: block; font-size: .75rem; color: var(--text-dim); margin-bottom: 3px; }
 
+/* manual control pad */
+.manual-pad {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.manual-pad .manual-row {
+    display: flex;
+    gap: 6px;
+}
+.btn-manual {
+    width: 56px;
+    height: 44px;
+    background: var(--card);
+    color: var(--accent2);
+    font-size: 1.1rem;
+    border: 1px solid rgba(0,210,255,0.25);
+}
+.btn-manual:hover { background: rgba(0,210,255,0.15); }
+.btn-manual:active { background: rgba(0,210,255,0.3); }
+.btn-manual.btn-stop { color: var(--accent); border-color: rgba(233,69,96,0.4); }
+.btn-manual.btn-stop:hover { background: rgba(233,69,96,0.15); }
+.manual-hint { font-size: .72rem; color: var(--text-dim); text-align: center; }
+
 /* mission status */
 .mission-status { font-size: .82rem; }
 .mission-status .label { color: var(--text-dim); }

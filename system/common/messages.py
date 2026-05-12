@@ -180,6 +180,21 @@ class MapMessage(BaseMessage):
 
 
 @dataclass
+class ManualControlMessage(BaseMessage):
+    """Sent by Control Center on ``vehicle/{vehicle_id}/manual``."""
+
+    vehicle_id: str = ""
+    command: str = ""             # "forward" | "backward" | "left" | "right" | "stop"
+
+    @classmethod
+    def from_json(cls, payload: str | bytes) -> "ManualControlMessage":
+        if isinstance(payload, bytes):
+            payload = payload.decode()
+        data = json.loads(payload)
+        return cls(**data)
+
+
+@dataclass
 class MapRequestMessage(BaseMessage):
     """Sent by Control Center on ``control/map/request``."""
 

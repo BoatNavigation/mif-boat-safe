@@ -19,6 +19,7 @@ from system.vehicle.services.drive_service import DriveService
 from system.vehicle.services.navigation_service import NavigationService
 from system.vehicle.services.obstacle_detection import ObstacleDetectionService
 from system.vehicle.services.obstacle_avoidance import ObstacleAvoidanceService
+from system.vehicle.services.manual_control_service import ManualControlService
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [VEHICLE] %(message)s")
 log = logging.getLogger(__name__)
@@ -48,6 +49,13 @@ def main():
         angle_tolerance=cfg.angle_tolerance,
         loop_rate_hz=cfg.nav_loop_rate_hz,
     )
+    manual_svc = ManualControlService(
+        vehicle_id=cfg.vehicle_id,
+        shared=shared,
+        drive=drive_svc,
+        mqtt_client=mqtt,
+        mission_service=mission_svc,
+    )
 
     position_svc.start()
     mission_svc.start()
@@ -55,6 +63,7 @@ def main():
     obstacle_det.start()
     obstacle_avoid.start()
     nav_svc.start()
+    manual_svc.start()
 
     log.info("All services started. Waiting for missions...")
 

@@ -39,6 +39,10 @@ class Topics:
         return f"vehicle/{vehicle_id}/status"
 
     @staticmethod
+    def vehicle_manual(vehicle_id: str) -> str:
+        return f"vehicle/{vehicle_id}/manual"
+
+    @staticmethod
     def vehicle_status_wildcard() -> str:
         return "vehicle/+/status"
 

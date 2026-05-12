@@ -89,6 +89,9 @@ class MissionService:
     def notify_completed(self):
         self._publish_status("completed")
 
+    def notify_paused_by_manual(self):
+        self._publish_status("paused")
+
     def _publish_status(self, status: str, waypoint_idx: int | None = None):
         mission = self._shared.get_mission()
         msg = MissionStatusMessage(

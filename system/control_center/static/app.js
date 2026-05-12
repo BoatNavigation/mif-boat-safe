@@ -359,6 +359,45 @@ $("#btnRefreshMap").addEventListener("click", async () => {
     await fetch("/api/map/refresh", { method: "POST" });
 });
 
+// ---------------------------------------------------------------------------
+// Manual control
+// ---------------------------------------------------------------------------
+
+async function sendManual(command) {
+    if (!selectedVehicle) return;
+    try {
+        await fetch("/api/vehicle/manual", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ vehicle_id: selectedVehicle, command }),
+        });
+    } catch (_) { /* ignore */ }
+}
+
+$("#btnFwd").addEventListener("click", () => sendManual("forward"));
+$("#btnBack").addEventListener("click", () => sendManual("backward"));
+$("#btnLeft").addEventListener("click", () => sendManual("left"));
+$("#btnRight").addEventListener("click", () => sendManual("right"));
+$("#btnStop").addEventListener("click", () => sendManual("stop"));
+
+const KEY_MAP = {
+    "w": "forward", "W": "forward", "ArrowUp": "forward",
+    "s": "backward", "S": "backward", "ArrowDown": "backward",
+    "a": "left", "A": "left", "ArrowLeft": "left",
+    "d": "right", "D": "right", "ArrowRight": "right",
+    " ": "stop",
+};
+
+document.addEventListener("keydown", (e) => {
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+    const cmd = KEY_MAP[e.key];
+    if (!cmd) return;
+    if (e.repeat) return;
+    e.preventDefault();
+    sendManual(cmd);
+});
+
 // initial render
 render();
 updateWaypointList();

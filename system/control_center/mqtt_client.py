@@ -80,6 +80,9 @@ class ControlCenterMqtt:
     def send_mission_control(self, vehicle_id: str, payload: str):
         self._client.publish(Topics.mission_control(vehicle_id), payload, qos=1)
 
+    def send_manual(self, vehicle_id: str, payload: str):
+        self._client.publish(Topics.vehicle_manual(vehicle_id), payload, qos=1)
+
     def disconnect(self):
         self._client.loop_stop()
         self._client.disconnect()

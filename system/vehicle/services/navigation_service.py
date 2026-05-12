@@ -37,6 +37,9 @@ class NavigationService:
         self._dt = 1.0 / loop_rate_hz
         self._thread: threading.Thread | None = None
         self._running = False
+        self._last_target_idx: int | None = None
+        self._last_cmd: str | None = None
+        self._tick_count = 0
 
     def start(self):
         self._running = True
@@ -73,6 +76,13 @@ class NavigationService:
 
         target_x = wp["x"]
         target_y = wp["y"]
+        idx = mission.current_waypoint_idx
+        total = len(mission.waypoints)
+
+        if idx != self._last_target_idx:
+            log.info("TARGET >> wp %d/%d -> (%.2f, %.2f) [action=%s]",
+                     idx + 1, total, target_x, target_y, wp.get("action", "none"))
+            self._last_target_idx = idx
 
         dx = target_x - pos.x
         dy = target_y - pos.y
@@ -82,20 +92,24 @@ class NavigationService:
             action = wp.get("action", "none")
             params = wp.get("params", {})
 
+            log.info("REACHED wp %d/%d at (%.2f, %.2f) | dist=%.2f | action=%s",
+                     idx + 1, total, pos.x, pos.y, dist, action)
+
             if action == "wait":
                 duration = params.get("duration", 0)
                 if duration > 0:
+                    log.info("WAIT %.1fs at wp %d", duration, idx + 1)
                     self._drive.send_command("stop")
                     time.sleep(duration)
 
             if action == "stop":
                 self._drive.send_command("stop")
 
-            idx = mission.current_waypoint_idx
             self._shared.advance_waypoint()
             if self._mission_svc:
                 new_mission = self._shared.get_mission()
                 if new_mission.status == "completed":
+                    log.info("MISSION COMPLETED (%s)", new_mission.mission_id)
                     self._mission_svc.notify_completed()
                     self._drive.send_command("stop")
                 else:
@@ -114,4 +128,15 @@ class NavigationService:
             raw_cmd = "forward"
 
         cmd = self._avoidance.filter_command(raw_cmd)
+
+        self._tick_count += 1
+        if cmd != self._last_cmd or self._tick_count % 20 == 0:
+            log.info(
+                "NAV pos=(%.2f, %.2f, %.0f°) -> wp%d=(%.2f, %.2f) | dist=%.2f | hdg_err=%.0f° | cmd=%s%s",
+                pos.x, pos.y, math.degrees(pos.rotation),
+                idx + 1, target_x, target_y, dist,
+                math.degrees(heading_error), cmd,
+                "" if cmd == raw_cmd else f" (raw={raw_cmd}, avoidance)",
+            )
+        self._last_cmd = cmd
         self._drive.send_command(cmd)
